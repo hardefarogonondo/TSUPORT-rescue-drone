@@ -1,1 +1,1 @@
-{"latitude_longitude": [{"latitute 1": "-7.2768052", "longitude 1": "112.7928443"}, {"latitute 2": "-7.2768118", "longitude 2": "112.7927361"}]}
+{"latitude_longitude": [{"latitude 1": "-7.9752908", "longitude 1": "112.6092308"}, {"latitude 2": "-7.9752908", "longitude 2": "112.609231"}, {"latitude 3": "-7.9752908", "longitude 3": "112.6092311"}]}
