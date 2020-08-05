@@ -1,4 +1,5 @@
 # TSUPORT Rescue Drone
+
 Author: Hardefa Rogonondo
 
 TSUPORT stands for Tsunami Post Disaster Robot. TSUPORT is a disaster robot system to help the search and rescue process especially after tsunami disaster. TSUPORT utilize the use of quadcopter drone and mobile robot simultaneously in post disaster area. TSUPORT drone is able to fly autonomously indoor or inside ruins of disaster thanks to the implemented features of the obstacle avoidance and path planning algorithm.
@@ -13,3 +14,9 @@ DroneKit
 MAVlink
 OpenCV
 Mono (Optional)
+
+# Contributing
+
+Fork the project and then clone your repository. Create a new branch off of master for your new feature or bug fix.
+
+Commit your changes with informative commit messages, push your branch and open a new pull request. Please provide ROS bags for the simulation and the Autopilot flight logs for the prototype robot relevant to the changes you have made.
