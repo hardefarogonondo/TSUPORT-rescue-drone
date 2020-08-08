@@ -1,26 +1,32 @@
 # -*- coding: utf-8 -*-
 
 """
-© Copyright 2020, TSUPORT (Tsunami Post Disaster Robot) Research Team.
+© Copyright 2020, TSUPORT (Tsunami Post Disaster Robot) Research Team, Politeknik Elektronika Negeri Surabaya.
 By: Hardefa Rizky Putu Rogonondo (Mechatronics Engineering 2016, 3110161019).
 """
 
 # Library
 from dronekit import Command, connect, LocationGlobal, LocationGlobalRelative, VehicleMode
 from pymavlink import mavutil # Used for command message definitions.
+import argparse
 import cv2
 import json
 import math
 import numpy as np
+import pandas as pd
 import threading
 import time
 
 # Initialization
-# Connection string for Ubuntu = /dev/ttyUSB0 | Windows = COM18 | MAVProxy = 127.0.0.1:14550.
-connection_string = "/dev/ttyUSB0"
-aTargetAltitude = 1
-aerial_speed = 2
-cap = cv2.VideoCapture("input.mp4") # diganti kamera ---------------------------------------------------------------------------------
+# Connection string for Ubuntu = /dev/ttyUSB0 | Windows = COM18 | MAVProxy = 127.0.0.1:14551.
+connection_string = "127.0.0.1:14551"
+aTargetAltitude = 2 # Target altitude for the vehicle while taking off.
+aerial_speed = 0.5 # Aerial speed for the vehicle when going to the waypoint.
+waypoint = [] # Create an empty list of waypoints from the calibrated file.
+cap = cv2.VideoCapture(2) # Opening camera streaming from video receiver.
+histogram = {} # Create an empty histogram dictionary.
+orientation = [] # Create an empty element for the histogram dictionary.
+distance = [] # Create an empty element for the histogram dictionary.
 
 # Opening Messages
 print("\n\n---Welcome to TSUPORT Rescue Program---\n\n")
@@ -28,10 +34,12 @@ print("\n\n---Welcome to TSUPORT Rescue Program---\n\n")
 # Connect to The Vehicle
 print("Connecting to vehicle on: %s" %connection_string)
 vehicle = connect(connection_string, wait_ready = False, heartbeat_timeout = 100, baud = 57600) # wait_ready = False is used to bypass the paramters loading and connecting the vehicle first.
-vehicle.wait_ready(True, timeout = 150) # wait_ready = True is to load parameters now.
-while vehicle.gps_0.fix_type < 6 and vehicle.gps_0.eph < 200: #and vehicle.gps_0.epv < 200:
+vehicle.wait_ready(True, timeout = 200) # wait_ready = True is to load parameters now.
+#while vehicle.gps_0.fix_type < 6 and vehicle.gps_0.eph < 200: #and vehicle.gps_0.epv < 200:
+while vehicle.gps_0.satellites_visible < 6 and vehicle.gps_0.eph < 200:
+# Could also use vehicle.gps_0.fix_type for better GPS quality.
 # EPH = HDOP * 100 | Ideal HDOP <= 1 | Excellent HDOP <= 2 | Good HDOP <= 5 | Moderate HDOP <= 10.
-    print "Waiting for GPS...:", vehicle.gps_0.fix_type
+    print "Waiting for GPS...:", vehicle.gps_0.satellites_visible
     time.sleep(1)
 print "Satellites Count = ", vehicle.gps_0.satellites_visible
 
@@ -55,7 +63,7 @@ def Control():
             print("Waiting for arming...")
             time.sleep(1)
         # Take off to target aTargetAltitude.
-        print("Target altitude = %s" %aTargetAltitude) 
+        print("Target altitude = %s" %aTargetAltitude)
         print("Taking off!! Please be careful")
         vehicle.simple_takeoff(aTargetAltitude) # Take off to target altitude.
         # Wait until the vehicle reaches a safe height before processing the goto (otherwise the command after Vehicle.simple_takeoff will execute immediately).
@@ -88,7 +96,7 @@ def Control():
             print("Waiting for arming...")
             time.sleep(1)
         # Take off to target aTargetAltitude.
-        print("Target altitude = %s" %aTargetAltitude) 
+        print("Target altitude = %s" %aTargetAltitude)
         print("Taking off! Please be careful!!")
         thrust = DEFAULT_TAKEOFF_THRUST
         while True:
@@ -201,22 +209,31 @@ def Control():
             vehicle.mode = VehicleMode("LAND")
         vehicle.close()
 
-    # Obstacle sensor readings with MAVLink based rangefinder
-    def send_distance_message(distance):
-        msg = vehicle.message_factory.distance_sensor_encode(
-            0, # time_boot_ms (not used).
-            1, # Minimum distance cm.
-            10000, # Maximum distance cm.
-            distance, # Current distance (must be int).
-            0, # Type 0 = MAV_DISTANCE_SENSOR_LASER Laser rangefinder, e.g. LightWare SF02/F or PulsedLight units.
-            0, # Onboard id (not used).
-            mavutil.mavlink.MAV_SENSOR_ROTATION_PITCH_270, # Must be set to MAV_SENSOR_ROTATION_PITCH_270 for mavlink rangefinder, represents downward facing
-            0 # covariance, not used
-        )
-        vehicle.send_mavlink(msg)
-        vehicle.flush()
-        if args.verbose:
-            log.debug("Sending mavlink distance_message:" +str(distance))
+    # MAVLink message listener using the python decorator
+    @vehicle.on_message('DISTANCE_SENSOR')
+    def listener(self, name, message):
+        global prox_id, prox_dist
+        global orientation, distance
+        prox_id = message.id
+        prox_dist = message.current_distance
+        orientation.append(prox_id)
+        distance.append(prox_dist)
+        # Use the command below to print the detected obstacle in terminal.
+        #print "ID: %s, Distance: %s" % (prox_id, prox_dist)
+
+    #Vector Field Histogram Algorithm calculation
+    def VectorFieldHistogram():
+        global robot_radius
+        global desired_safety_distance
+        global desired_min_turning_radius
+        robot_radius = 0.74
+        desired_safety_distance = 1.5
+        desired_min_turning_radius = 0.1
+        for i in range(len(tempdata)):
+                histogram[tempdata[i]] = distance[np.where(orientation == tempdata[i])]
+        if prox_dist <= 150:
+            roll_counted = robot_radius + desired_safety_distance + desired_min_turning_radius
+            set_attitude(roll_counted, 0, 0)
 
     # Main Mission
     start = input("Please input flight code: ")
@@ -224,7 +241,6 @@ def Control():
         # Opening calibrated coordinates file
         with open("data_coordinate.txt") as dc:
             gps_save = json.load(dc)
-        waypoint = []
         loop = 0
         # Load coordinates as waypoints
         while (loop < len(gps_save["latitude_longitude"])):
@@ -232,7 +248,7 @@ def Control():
             longitude = float(gps_save["latitude_longitude"][loop]["longitude {}".format(loop+1)])
             waypoint.append(LocationGlobalRelative(latitude, longitude, aTargetAltitude))
             loop += 1
-        # Choose mode to take off in (GUIDED Mode or GUIDED NO GPS Mode) 
+        # Choose mode to take off in (GUIDED Mode or GUIDED NO GPS Mode)
         arm_and_takeoff(aTargetAltitude)
         #arm_and_takeoff_nogps(aTargetAltitude)
         vehicle.airspeed = aerial_speed
@@ -241,6 +257,15 @@ def Control():
         while (loop_waypoint < len(gps_save["latitude_longitude"])):
             if (loop_waypoint == 0):
                 go_to(30, waypoint[0]) # Duration to each waypoint needed to be counted first using the vehicle airspeed in consideration.
+            #print("Masuk save csv")
+            orientation = np.array(orientation)
+            distance = np.array(distance)
+            tempdata = np.unique(orientation)
+            for i in range(len(tempdata)):
+                histogram[tempdata[i]] = distance[np.where(orientation == tempdata[i])]
+            df = pd.DataFrame.from_dict(histogram, orient='index')
+            df = df.transpose()
+            df.to_csv("histogram.csv", index = False)
             loop_waypoint += 1
             # Example of custom mission:
             # Positioning using compass oriented heading:
@@ -269,111 +294,38 @@ def Control():
         print("Program will be closed...")
 
 def Image():
-    # Canny edge detection filter
-    def do_canny(frame):
-        # Converts frame to grayscale because we only need the luminance channel for detecting edges - less computationally expensive.
-        gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
-        # Applies a 5x5 gaussian blur with deviation of 0 to frame - not mandatory since Canny will do this for us.
-        blur = cv2.GaussianBlur(gray, (5, 5), 0)
-        # Applies Canny edge detector with minimum value of 50 and maximum value of 150.
-        canny = cv2.Canny(blur, 50, 150)
-        return canny
-
-    # Segmenting the frame
-    def do_segment(frame):
-        # Since an image is a multi-directional array containing the relative intensities of each pixel in the image, we can use frame.shape to return a tuple: [number of rows, number of columns, number of channels] of the dimensions of the frame.
-        # frame.shape[0] give us the number of rows of pixels the frame has.
-        # Since height begins from 0 at the top, the y-coordinate of the bottom of the frame is its height.
-        height = frame.shape[0]
-        # Creates a triangular polygon for the mask defined by three (x, y) coordinates.
-        polygons = np.array([[(0, height), (800, height), (380, 290)]])
-        # Creates an image filled with zero intensities with the same dimensions as the frame.
-        mask = np.zeros_like(frame)
-        # Allows the mask to be filled with values of 1 and the other areas to be filled with values of 0.
-        cv2.fillPoly(mask, polygons, 255)
-        # A bitwise and operation between the mask and frame keeps only the triangular area of the frame.
-        segment = cv2.bitwise_and(frame, mask)
-        return segment
-
-    # Calculate lines of detection
-    def calculate_lines(frame, lines):
-        # Empty arrays to store the coordinates of the left and right lines.
-        left = []
-        right = []
-        # Loops through every detected line.
-        for line in lines:
-            # Reshapes line from 2D array to 1D array.
-            x1, y1, x2, y2 = line.reshape(4)
-            # Fits a linear polynomial to the x and y coordinates and returns a vector of coefficients which describe the slope and y-intercept.
-            parameters = np.polyfit((x1, x2), (y1, y2), 1)
-            slope = parameters[0]
-            y_intercept = parameters[1]
-            # If slope is negative, the line is to the left of the lane, and otherwise, the line is to the right of the lane.
-            if slope < 0:
-                left.append((slope, y_intercept))
-            else:
-                right.append((slope, y_intercept))
-        # Averages out all the values for left and right into a single slope and y-intercept value for each line.
-        left_avg = np.average(left, axis = 0)
-        right_avg = np.average(right, axis = 0)
-        # Calculates the x1, y1, x2, y2 coordinates for the left and right lines.
-        left_line = calculate_coordinates(frame, left_avg)
-        right_line = calculate_coordinates(frame, right_avg)
-        return np.array([left_line, right_line])
-
-    # Calculate detection coordinate
-    def calculate_coordinates(frame, parameters):
-        slope, intercept = parameters
-        # Sets initial y-coordinate as height from top down (bottom of the frame).
-        y1 = frame.shape[0]
-        # Sets final y-coordinate as 150 above the bottom of the frame.
-        y2 = int(y1 - 150)
-        # Sets initial x-coordinate as (y1 - b) / m since y1 = mx1 + b.
-        x1 = int((y1 - intercept) / slope)
-        # Sets final x-coordinate as (y2 - b) / m since y2 = mx2 + b.
-        x2 = int((y2 - intercept) / slope)
-        return np.array([x1, y1, x2, y2])
-
-    # Draw lines of detection
-    def visualize_lines(frame, lines):
-        # Creates an image filled with zero intensities with the same dimensions as the frame.
-        lines_visualize = np.zeros_like(frame)
-        # Checks if any lines are detected.
-        if lines is not None:
-            for x1, y1, x2, y2 in lines:
-                # Draws lines between two coordinates with green color and 5 thickness.
-                cv2.line(lines_visualize, (x1, y1), (x2, y2), (0, 255, 0), 5)
-        return lines_visualize
-
+    # Check if the live streaming successfull
+    if cap.isOpened() == False:
+        print("Error Live Streaming")
+        print threading .currentThread().getName(), 'Live Streaming Failed'
+    # Default resolutions of the frame are obtained.The default resolutions are system dependent.
+    #frame_width = int(cap.get(3))
+    #frame_height = int(cap.get(4))
+    # Define the codec and create VideoWriter object.The output is stored in 'Live_Stream.avi' file.
+    #vid = cv2.VideoWriter('Live_Stream.avi', cv2.VideoWriter_fourcc('M','J','P','G'), 10, (frame_width, frame_height))
+    # Live streaming until closed
     while (cap.isOpened()):
+        # Capture frame by frame
         # Notes:
-        # ret --> a boolean return value from getting the frame.
-        # frame --> the current frame being projected in the video.
-        ret, frame = cap.read()
-        canny = do_canny(frame)
-        cv2.imshow("canny", canny)
-        segment = do_segment(canny)
-        hough = cv2.HoughLinesP(segment, 2, np.pi / 180, 100, np.array([]), minLineLength = 100, maxLineGap = 50)
-        # Averages multiple detected lines from hough into one line for left border of lane and one line for right border of lane.
-        lines = calculate_lines(frame, hough)
-        # Visualizes the lines.
-        lines_visualize = visualize_lines(frame, lines)
-        cv2.imshow("hough", lines_visualize)
-        # Overlays lines on frame by taking their weighted sums and adding an arbitrary scalar value of 1 as the gamma argument.
-        output = cv2.addWeighted(frame, 0.9, lines_visualize, 1, 1)
-        # Opens a new window and displays the output frame.
-        cv2.imshow("output", output)
+        # grabbed --> a boolean return value from getting the frame.
+        # image --> the current frame being projected in the video.
+        (grabbed, image)= cap.read()
+        # Write the frame into the file Live_Stream.avi
+        #vid.write(image)
+        cv2.putText(image, "TSUPORT", (180,50), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 5)
+        cv2.putText(image, "- Live Streaming -", (160,80), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+        cv2.imshow('Live Streaming', image)
         # Frames are read by intervals of 10 milliseconds. The programs breaks out of the while loop when the user presses the 'esc' key.
-        if cv2.waitKey(10) == 27:
-            cap.release()
-            cv2.destroyAllWindows()
+        if cv2.waitKey(50) == 27:
             break
     # The following frees up resources and closes all windows
     cap.release()
+    #vid.release()
     cv2.destroyAllWindows()
+    print threading.currentThread().getName(), 'All Done'
 
 Control = threading.Thread(name = 'Control', target = Control, args = ())
-Image = threading.Thread(name = 'Image', target = Image,args = ())
+Image = threading.Thread(name = 'Image', target = Image, args = ())
 
 Control.start()
-#Image.start()
+Image.start()
