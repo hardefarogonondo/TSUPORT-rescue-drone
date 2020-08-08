@@ -9,7 +9,7 @@ This repository contain 2 subject of the research, the simulation and the implem
 The simulation documentation contains information about how to setup and run the two planner systems on the Gazebo simulator and on a companion computer running Ubuntu 18.04 (recommended), for both avoidance and collision prevention use cases.
 
 # Table of Contents
-- [Getting Started](#getting-started)
+- [TSUPORT Rescue Drone](#TSUPORT-Rescue-Drone)
   - [Installation](#installation)
     - [Installation for Ubuntu](#installation)
   - [Run the Avoidance Gazebo Simulation](#run-the-avoidance-gazebosimulation)
