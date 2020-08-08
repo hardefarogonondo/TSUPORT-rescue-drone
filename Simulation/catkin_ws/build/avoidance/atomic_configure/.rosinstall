@@ -1,0 +1,2 @@
+- setup-file:
+    local-name: /home/noxand/catkin_ws/devel/.private/avoidance/setup.sh

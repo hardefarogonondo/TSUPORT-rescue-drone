@@ -1,0 +1,6 @@
+avoidance/avoidance
+/home/noxand/catkin_ws/devel/.private/avoidance/cmake.lock /home/noxand/catkin_ws/devel/./cmake.lock
+/home/noxand/catkin_ws/devel/.private/avoidance/lib/libavoidance.so /home/noxand/catkin_ws/devel/lib/libavoidance.so
+/home/noxand/catkin_ws/devel/.private/avoidance/lib/pkgconfig/avoidance.pc /home/noxand/catkin_ws/devel/lib/pkgconfig/avoidance.pc
+/home/noxand/catkin_ws/devel/.private/avoidance/share/avoidance/cmake/avoidanceConfig-version.cmake /home/noxand/catkin_ws/devel/share/avoidance/cmake/avoidanceConfig-version.cmake
+/home/noxand/catkin_ws/devel/.private/avoidance/share/avoidance/cmake/avoidanceConfig.cmake /home/noxand/catkin_ws/devel/share/avoidance/cmake/avoidanceConfig.cmake
