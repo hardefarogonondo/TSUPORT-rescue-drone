@@ -17,13 +17,9 @@ The *local_planner* requires less computational power but it doesn't compute opt
 
 # Table of Contents
 - [TSUPORT Rescue Drone](#TSUPORT-Rescue-Drone)
-  - [Installation](#installation)
-    - [Installation for Ubuntu](#installation)
-  - [Run the Avoidance Gazebo Simulation](#run-the-avoidance-gazebosimulation)
-    - [Local Planner](#local-planner)
-  - [Run on Hardware](#run-on-hardware)
-    - [Prerequisite](#prerequisite)
-    - [Local Planner](#local-planner)
+  - [Installation](#Installation)
+    - [Simulation Installation](#Simulation-Installation)
+    - [Run the Simulation](#Run-the-Simulation)
 - [Troubleshooting](#troubleshooting)
 - [Contributing](#contributing)
 
@@ -120,7 +116,7 @@ You might want to skip some steps if your system is already partially installed.
    source ~/.bashrc
    ```
 
-## Run the Avoidance Simulation
+## Run the Simulation
 
 In the following section we guide you through installing and running a Gazebo simulation of local planner.
 
@@ -168,9 +164,7 @@ In the following section we guide you through installing and running a Gazebo si
    ```
 
 The last three steps, together with sourcing your catkin **setup.bash** (`source ~/catkin_ws/devel/setup.bash`) should be repeated each time a new terminal window is open.
-You should now be ready to run the simulation using local or global planner.
-
-### Local Planner (default, heavily flight tested)
+You should now be ready to run the simulation.
 
 This section shows how to start the *local_planner* and use it for avoidance in mission or offboard mode.
 
@@ -181,42 +175,14 @@ The planner is based on the [3DVFH+](http://ceur-ws.org/Vol-1319/morse14_paper_0
 >   sudo apt install ros-melodic-stereo-image-proc ros-melodic-image-view
 >   ```
 
-Any of the following three launch file scripts can be used to run local planner:
-> **Note:** The scripts run the same planner but simulate different sensor/camera setups. They all enable *Obstacle Avoidance* and *Collision Prevention*.
-* `local_planner_stereo`: simulates a vehicle with a stereo camera that uses OpenCV's block matching algorithm (SGBM by default) to generate depth information
-  ```bash
-  roslaunch local_planner local_planner_stereo.launch
-  ```
-    
-  > **Note:** The disparity map from `stereo-image-proc` is published as a [stereo_msgs/DisparityImage](http://docs.ros.org/api/stereo_msgs/html/msg/DisparityImage.html) message, which is not supported by rviz or rqt. 
-  > To visualize the message, first open a *new terminal* and setup the required environment variables:
-  > ```bash
-  > source devel/setup.bash
-  > ```
-  > Then do either of:
-  > - run:
-  >   ```bash
-  >   rosrun image_view stereo_view stereo:=/stereo image:=image_rect_color
-  >   ```
-  > - publish the `DisparityImage` as a simple `sensor_msgs/Image`:
-  >   ```bash
-  >   rosrun topic_tools transform /stereo/disparity /stereo/disparity_image sensor_msgs/Image 'm.image' 
-  >   ```
-  > The disparity map can then be visualized by *rviz* or *rqt* under the topic */stereo/disparity_image*.
-
-* `local_planner_depth_camera`: simulates vehicle with one forward-facing kinect sensor
-  ```bash
-  roslaunch local_planner local_planner_depth-camera.launch
-  ```
-
 * `local_planner_sitl_3cam`: simulates vehicle with 3 kinect sensors (left, right, front)
   ```bash
   roslaunch local_planner local_planner_sitl_3cam.launch
   ```
 
 You will see the Iris drone unarmed in the Gazebo world.
-To start flying, there are two options: OFFBOARD or MISSION mode.
-For OFFBOARD, run:
+To start flying, there are two options: Offboard or Mission Mode.
+For Offboard Mode, run:
 
 ```bash
 # In another terminal 
@@ -224,20 +190,18 @@ rosrun mavros mavsys mode -c OFFBOARD
 rosrun mavros mavsafety arm
 ```
 
+Or open the open [QGroundControl](http://qgroundcontrol.com/) and arm the drone then take off.
+
 The drone will first change its altitude to reach the goal height.
 It is possible to modify the goal altitude with `rqt_reconfigure` GUI.
-![Screenshot rqt_reconfigure goal height](docs/lp_goal_height.png)
 Then the drone will start moving towards the goal.
 The default x, y goal position can be changed in Rviz by clicking on the 2D Nav Goal button and then choosing the new goal x and y position by clicking on the visualized gray space.
 If the goal has been set correctly, a yellow sphere will appear where you have clicked in the grey world.
-![Screenshot rviz goal selection](docs/lp_goal_rviz.png)
 
 For MISSIONS, open [QGroundControl](http://qgroundcontrol.com/) and plan a mission as described [here](https://docs.px4.io/en/flight_modes/mission.html). Set the parameter `COM_OBS_AVOID` true.
 Start the mission and the vehicle will fly the mission waypoints dynamically recomputing the path such that it is collision free.
 
-
-
-Initially the drone should just hover at 3.5m altitude.
+Initially the drone should just hover at 3.5 M altitude.
 
 From the command line, you can also make Gazebo follow the drone, if you want.
 
@@ -245,28 +209,30 @@ From the command line, you can also make Gazebo follow the drone, if you want.
 gz camera --camera-name=gzclient_camera --follow=iris
 ```
 
-One can plan a new path by setting a new goal with the *2D Nav Goal* button in rviz.
-The planned path should show up in rviz and the drone should follow the path, updating it when obstacles are detected.
-It is also possible to set a goal without using the obstacle avoidance (i.e. the drone will go straight to this goal and potentially collide with obstacles). To do so, set the position with the *2D Pose Estimate* button in rviz.
+One can plan a new path by setting a new goal with the *2D Nav Goal* button in RViz.
+The planned path should show up in RViz and the drone should follow the path, updating it when obstacles are detected.
+It is also possible to set a goal without using the obstacle avoidance (i.e. the drone will go straight to this goal and potentially collide with obstacles).
+To do so, set the position with the *2D Pose Estimate* button in RViz.
 
 # Troubleshooting
 
 ## Simulation
 
-### I see the drone position in rviz (shown as a red arrow), but the world around is empty
+### I see the drone position in RViz (shown as a red arrow), but the world around is empty
 Check that some camera topics (including */camera/depth/points*) are published with the following command:
 
 ```bash
 rostopic list | grep camera
 ```
 
-If */camera/depth/points* is the only one listed, it may be a sign that gazebo is not actually publishing data from the simulated depth camera. Verify this claim by running:
+If */camera/depth/points* is the only one listed, it may be a sign that Gazebo is not actually publishing data from the simulated depth camera. Verify this claim by running:
 
 ```bash
 rostopic echo /camera/depth/points
 ```
 
-When everything runs correctly, the previous command should show a lot of unreadable data in the terminal. If you don't receive any message, it probably means that gazebo is not publishing the camera data.
+When everything runs correctly, the previous command should show a lot of unreadable data in the terminal.
+If you don't receive any message, it probably means that Gazebo is not publishing the camera data.
 
 Check that the clock is being published by Gazebo:
 
@@ -274,26 +240,33 @@ Check that the clock is being published by Gazebo:
 rostopic echo /clock
 ```
 
-If it is not, you have a problem with Gazebo (Did it finish loading the world? Do you see the buildings and the drone in the Gazebo UI?). However, if it is publishing the clock, then it might be a problem with the depth camera plugin. Make sure the package `ros-kinetic-gazebo-ros-pkgs` is installed. If not, install it and rebuild the Firmware (with `$ make px4_sitl_default gazebo` as explained above).
+If it is not, you have a problem with Gazebo (Did it finish loading the world? Do you see the buildings and the drone in the Gazebo UI?).
+However, if it is publishing the clock, then it might be a problem with the depth camera plugin.
+Make sure the package `ros-kinetic-gazebo-ros-pkgs` is installed.
+If not, install it and rebuild the Firmware (with `$ make px4_sitl_default gazebo` as explained above).
 
-### I see the drone and world in rviz, but the drone does not move when I set a new "2D Nav Goal"
-Is the drone in OFFBOARD mode? Is it armed and flying?
+### I see the drone and world in RViz, but the drone does not move when I set a new "2D Nav Goal"
+Is the drone in Offboard mode?
+Is it armed and flying?
 
 ```bash
-# Set the drone to OFFBOARD mode
+# Set the drone to Offboard mode
 rosrun mavros mavsys mode -c OFFBOARD
 # Arm
 rosrun mavros mavsafety arm
 ```
 
-### I see the drone and world in rviz, but the drone does not follow the path properly
+Or open the open [QGroundControl](http://qgroundcontrol.com/) and arm the drone then take off.
+
+### I see the drone and world in RViz, but the drone does not follow the path properly
 Some tuning may be required in the file *"<Firmware_dir>/posix-configs/SITL/init/rcS_gazebo_iris"*.
 
-### I see the drone and world in rviz, I am in OFFBOARD mode, but the planner is still not working
+### I see the drone and world in RViz, I am in Offboard mode, but the planner is still not working
 Some parameters that can be tuned in *rqt reconfigure*.
 
 # Contributing
+Fork the project and then clone your repository.
+Create a new branch off of master for your new feature or bug fix.
 
-Fork the project and then clone your repository. Create a new branch off of master for your new feature or bug fix.
-
-Commit your changes with informative commit messages, push your branch, and open a new pull request. Please provide ROS bags for the simulation and autopilot flight logs for the prototype robot relevant to the changes you have made.
+Commit your changes with informative commit messages, push your branch, and open a new pull request.
+Please provide ROS bags for the simulation and autopilot flight logs for the prototype robot relevant to the changes you have made.
