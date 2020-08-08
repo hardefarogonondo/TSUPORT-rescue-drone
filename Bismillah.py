@@ -222,7 +222,7 @@ def Control():
         #print "ID: %s, Distance: %s" % (prox_id, prox_dist)
 
     #Vector Field Histogram Algorithm calculation
-    def VectorFieldHistogram():
+    def VectorFieldHistogramStar():
         global robot_radius
         global desired_safety_distance
         global desired_min_turning_radius
@@ -257,7 +257,7 @@ def Control():
         while (loop_waypoint < len(gps_save["latitude_longitude"])):
             if (loop_waypoint == 0):
                 go_to(30, waypoint[0]) # Duration to each waypoint needed to be counted first using the vehicle airspeed in consideration.
-            #print("Masuk save csv")
+            # Record in flight histogram data
             orientation = np.array(orientation)
             distance = np.array(distance)
             tempdata = np.unique(orientation)
@@ -299,10 +299,10 @@ def Image():
         print("Error Live Streaming")
         print threading .currentThread().getName(), 'Live Streaming Failed'
     # Default resolutions of the frame are obtained.The default resolutions are system dependent.
-    #frame_width = int(cap.get(3))
-    #frame_height = int(cap.get(4))
+    frame_width = int(cap.get(3))
+    frame_height = int(cap.get(4))
     # Define the codec and create VideoWriter object.The output is stored in 'Live_Stream.avi' file.
-    #vid = cv2.VideoWriter('Live_Stream.avi', cv2.VideoWriter_fourcc('M','J','P','G'), 10, (frame_width, frame_height))
+    vid = cv2.VideoWriter('Live_Stream.avi', cv2.VideoWriter_fourcc('M','J','P','G'), 10, (frame_width, frame_height))
     # Live streaming until closed
     while (cap.isOpened()):
         # Capture frame by frame
@@ -311,7 +311,7 @@ def Image():
         # image --> the current frame being projected in the video.
         (grabbed, image)= cap.read()
         # Write the frame into the file Live_Stream.avi
-        #vid.write(image)
+        vid.write(image)
         cv2.putText(image, "TSUPORT", (180,50), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 5)
         cv2.putText(image, "- Live Streaming -", (160,80), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
         cv2.imshow('Live Streaming', image)
@@ -320,7 +320,7 @@ def Image():
             break
     # The following frees up resources and closes all windows
     cap.release()
-    #vid.release()
+    vid.release()
     cv2.destroyAllWindows()
     print threading.currentThread().getName(), 'All Done'
 
